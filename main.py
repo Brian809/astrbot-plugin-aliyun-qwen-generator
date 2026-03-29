@@ -20,26 +20,38 @@ class MyPlugin(Star):
     # 注册指令的装饰器。指令名为 image。注册成功后，发送 `/image` 就会触发这个指令，并回复 `你好, {user_name}!`
     @filter.command("image")
     async def image(self, event: AstrMessageEvent):
-        """这是一个 image 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
+        """生成图片"""
         user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        try:
-            image_api_response = await asyncio.to_thread(self._get_image_api_response_sync, message_str)
+        message_str = event.message_str.replace("/image", "").strip()
 
-            # 处理成功响应
-            # 解析JSON字符串为字典
+        if not message_str:
+            yield event.plain_result("请输入图片描述，例如：/image 一只可爱的猫")
+            return
+
+        # 先发送等待提示
+        yield event.plain_result(f"{user_name} 图片生成中，请稍候...")
+
+        # 后台生成图片
+        asyncio.create_task(self._generate_image_task(event, user_name, message_str))
+
+    async def _generate_image_task(self, event: AstrMessageEvent, user_name: str, prompt: str):
+        """后台生成图片并发送"""
+        try:
+            image_api_response = await asyncio.to_thread(
+                self._get_image_api_response_sync,
+                prompt
+            )
+
             response_dict = json.loads(image_api_response)
             image_url = response_dict["output"]["choices"][0]["message"]["content"][0]["image"]
-            logger.info(image_url)
-            yield event.make_result().url_image(image_url)
+            logger.info(f"图片生成成功: {image_url}")
+
+            # 发送图片
+            await event.send(event.make_result().url_image(image_url))
 
         except Exception as e:
             logger.error(f"图片生成失败: {str(e)}")
-            yield event.plain_result(f"{user_name} 对不起！图片生成失败，请稍后重试")
-
-        yield event.plain_result("图片生成中...") # 发送一条纯文本消息
+            await event.send(event.plain_result(f"{user_name} 图片生成失败，请稍后重试"))
 
     async def terminate(self):
         """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
