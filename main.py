@@ -43,12 +43,14 @@ class MyPlugin(Star):
         async for result in self.group_handler.handle(event):
             yield result
 
-    @filter.llm("generate_image")
-    async def llm_generate_image(self, event: AstrMessageEvent, description: str = ""):
-        """
-        LLM 工具：生成图片
+    @filter.llm_tool(name="generate_image")
+    async def llm_generate_image(self, event: AstrMessageEvent, description: str):
+        '''生成图片。
+
+        根据用户提供的描述生成一张图片。当用户想要生成图片、画图、创作图像时使用此工具。
+
         Args:
-            description: 图片的详细描述，包括主体、场景、风格、色彩等
-        """
+            description(string): 图片的详细描述，包括主体、场景、风格、色彩等。例如："一只可爱的橘猫在草地上晒太阳，卡通风格"
+        '''
         async for result in self.llm_handler.handle(event, description):
             yield result
