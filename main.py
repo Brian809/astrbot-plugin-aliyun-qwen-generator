@@ -1,3 +1,4 @@
+from astrbot.api import AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
 
@@ -13,8 +14,9 @@ from .llm_handler import LLMImageHandler
     "1.1.0",
 )
 class MyPlugin(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
+        self.config = config
         self.generator = None
         self.group_handler = None
         self.llm_handler = None
@@ -24,8 +26,8 @@ class MyPlugin(Star):
         if self.generator is not None:
             return True
 
-        api_key = self.context.get_config().get("aliyun_qwen_api_key", "")
-        api_url = self.context.get_config().get("aliyun_qwen_api_url", "")
+        api_key = self.config.get("aliyun_qwen_api_key", "")
+        api_url = self.config.get("aliyun_qwen_api_url", "")
 
         if not api_key:
             return False
