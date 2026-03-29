@@ -15,19 +15,25 @@ from .llm_handler import LLMImageHandler
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        self._init_generator()
+        self.generator = None
+        self.group_handler = None
+        self.llm_handler = None
 
-    def _init_generator(self):
-        """初始化图片生成器"""
+    def _init_generator(self) -> bool:
+        """初始化图片生成器，返回是否成功"""
+        if self.generator is not None:
+            return True
+
         api_key = self.context.get_config().get("aliyun_qwen_api_key", "")
         api_url = self.context.get_config().get("aliyun_qwen_api_url", "")
 
         if not api_key:
-            raise ValueError("aliyun_qwen_api_key 未配置")
+            return False
 
         self.generator = ImageGenerator(api_key=api_key, api_url=api_url)
         self.group_handler = GroupImageHandler(self.generator)
         self.llm_handler = LLMImageHandler(self.generator)
+        return True
 
     async def initialize(self):
         """插件初始化"""
@@ -40,6 +46,9 @@ class MyPlugin(Star):
     @filter.command("image")
     async def image(self, event: AstrMessageEvent):
         """群聊指令：/image <描述>"""
+        if not self._init_generator():
+            yield event.plain_result("请先配置 aliyun_qwen_api_key")
+            return
         async for result in self.group_handler.handle(event):
             yield result
 
@@ -52,5 +61,8 @@ class MyPlugin(Star):
         Args:
             description(string): 图片的详细描述，包括主体、场景、风格、色彩等。例如："一只可爱的橘猫在草地上晒太阳，卡通风格"
         '''
+        if not self._init_generator():
+            yield "图片生成服务未配置，请联系管理员配置 aliyun_qwen_api_key"
+            return
         async for result in self.llm_handler.handle(event, description):
             yield result
